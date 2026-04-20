@@ -95,6 +95,16 @@ Example agent prompt that would trigger it:
 
 The supervisor generates the R code, calls the tool, parses the returned `output` string, and composes the final answer.
 
+## Auth note (important)
+
+Unity Catalog Python UDFs currently run in a sandboxed environment with **no ambient Databricks auth**. That means `dbutils.secrets.get(...)` and `WorkspaceClient()` fail with "cannot configure default credentials" when called from inside a UC function.
+
+Practical implications for this repo:
+
+- The `sql/02_register_function.sql` file uses a secret-scope pattern that assumes the UDF runtime exposes `dbutils` (it may for some compute types and not others; verify in your workspace before relying on it).
+- For a quick POC in your own workspace, hardcode `host`, `token`, `cluster_id` as string literals in the function body. Revoke/rotate the token when the POC ends.
+- For production, the right answer is one of: (a) a Model Serving endpoint that hosts this logic with env-var auth, called by the agent as an HTTP tool, or (b) a UC HTTP connection with a secret-backed bearer token, fronted by a thin SQL wrapper that invokes the external service.
+
 ## Production considerations
 
 This is a baseline single-cluster pattern good for demos and small teams. For scale:
